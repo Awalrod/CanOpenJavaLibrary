@@ -11,6 +11,22 @@ An interface between canopen and java
         ObjectDictionary objDict = DefaultOD.create(0x22);
         instance = new CanOpen(driver,objDict,0x22,true);
         System.out.println("Got Canopen");
+        return(instance)
     }
+```
+
+##Example Subentry listener
+```java
+public class SubEntryListener implements CanOpenListener{
+	public SubEntryListener(CanOpen coInstance, int index, int subindex){
+		coInstance.start();
+		coInstance.getObjDict.getSubEntry(index,subindex).addListener(this);
+	} 
+	@Override
+	public void onObjDictChange(SubEntry se){
+		int integerValue = se.getInt();
+		//Do stuff with value
+	}
+}
 ```
 
