@@ -1,7 +1,7 @@
 # CanOpenJavaLibrary
 An interface between canopen and java
 ##Creating a CanOpen instance
-'''
+```java
     private static void createNewInstance(String ipAddress, Integer portNum){
         System.out.println(ipAddress+":"+Integer.toString(portNum));
         DriverManager dm = new DriverManager("Datagram",ipAddress,portNum,true);
@@ -12,5 +12,5 @@ An interface between canopen and java
         instance = new CanOpen(driver,objDict,0x22,true);
         System.out.println("Got Canopen");
     }
-'''
+```
 
