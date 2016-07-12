@@ -1,0 +1,145 @@
+package com.gcdc.canopen;
+
+import java.util.*;
+
+class OdEntry
+{
+	int index;
+	LinkedList<SubEntry> subIndexList;
+	String pname;
+
+
+	OdEntry(int index, String name, SubEntry sub)
+	{
+		this(index,name);
+//		this.index = index;
+//		subIndexList = new LinkedList<SubEntry>();
+		appendSub(sub);
+	}
+
+
+	OdEntry(int index, String name)
+	{
+		this.index = index;
+		subIndexList = new LinkedList<SubEntry>();
+		pname = name.trim();
+	}
+
+
+	void appendSub( SubEntry sub)
+	{
+		subIndexList.add(sub);
+	}
+
+
+	int size()
+	{
+		return(subIndexList.size());
+	}
+
+
+	SubEntry getSub(int subindex) throws COException
+	{
+		try
+		{	
+			return(subIndexList.get(subindex));
+		}
+		catch(IndexOutOfBoundsException e)
+		{
+			throw COException.noSubindex(e.toString());
+		}
+	}
+
+
+	private String toIndexFmt()
+	{
+		return String.format("%04X", index).toUpperCase();
+	}
+
+	private String toSizeFmt()
+	{
+		return String.format("%X", size()).toUpperCase();
+	}
+
+
+	void dump()
+	{
+		System.out.println( "Index: 0x"+ toIndexFmt() +"   Num sub :"+size() );
+		ListIterator<SubEntry> litr = subIndexList.listIterator(0);
+		while(litr.hasNext())
+		{
+			litr.next().dump();
+		}
+	}
+
+
+	String toIniString()
+	{
+		StringBuilder retval = new StringBuilder("[");
+		retval.append(toIndexFmt());
+		retval.append("]\r\n");
+
+		if(size() >1)
+		{
+			retval.append("SubNumber=0x");
+			retval.append(toSizeFmt());
+			retval.append("\r\n");
+		}
+		retval.append("ParameterName=");
+		retval.append(pname);
+
+		if(size() >1) retval.append("\r\nObjectType=0x9\r\n");
+		else retval.append("\r\nObjectType=0x7\r\n");
+
+		if(size() == 1)
+		{
+			retval.append(subIndexList.getFirst().toIniString());
+		}
+		else
+		{
+				int i = 0;
+			ListIterator<SubEntry> litr = subIndexList.listIterator(0);
+			while(litr.hasNext())
+			{
+				retval.append("\r\n");
+				retval.append(litr.next().toIniString(index, i++));
+			}
+		}
+
+
+		return(retval.toString());
+	}
+
+
+	static OdEntry pdoFactory(int index, String name, int cobId, int transType, int inhibitTime, int eventTimer)
+	{
+		OdEntry od = new OdEntry(index, name);
+		SubEntry v1 = new SubEntry(SubEntry.AccessType.CONST, "largest subindex supported", (byte)0x5);
+		od.appendSub(v1);
+		v1 = new SubEntry(SubEntry.AccessType.RW, "COB-Id used", cobId);
+		od.appendSub(v1);
+		v1 = new SubEntry(SubEntry.AccessType.RW, "Transmission Type", (byte)(transType));
+		od.appendSub(v1);
+		v1 = new SubEntry(SubEntry.AccessType.RW, "Inhibit Time", (short)(inhibitTime));
+		od.appendSub(v1);
+		v1 = new SubEntry(SubEntry.AccessType.RW, "Unused", (byte)(0));
+		od.appendSub(v1);
+		v1 = new SubEntry(SubEntry.AccessType.RW, "Event Timer", (short)(eventTimer));
+		od.appendSub(v1);
+		return(od);
+	}
+
+
+	static OdEntry pdoMappingFactory( int index, String name, int... maps)
+	{
+		OdEntry od = new OdEntry(index, name);
+		SubEntry v1 = new SubEntry(SubEntry.AccessType.CONST, "number of mapped objects", (byte)maps.length);
+		od.appendSub(v1);
+		for( int i=0; i< maps.length; i++)
+		{
+			v1 = new SubEntry(SubEntry.AccessType.RW, "PDO mapping "+i+1+" app. object", maps[i]);
+			od.appendSub(v1);
+		}
+		return(od);
+	}
+}

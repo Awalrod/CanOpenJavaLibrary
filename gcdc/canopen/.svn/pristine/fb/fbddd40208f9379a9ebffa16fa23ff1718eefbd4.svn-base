@@ -1,0 +1,111 @@
+package com.gcdc.canopen;
+
+import com.gcdc.can.CanMessage;
+import com.gcdc.can.Driver;
+//import com.gcdc.can.CanMessageConsumer;
+import java.util.TimerTask;
+import java.util.Timer;
+import java.util.HashMap;
+
+class Sdo extends Protocol
+{
+	static final int SDOABT_TOGGLE_NOT_ALTERNED =  0x05030000;
+	static final int SDOABT_TIMED_OUT           =  0x05040000;
+	static final int SDOABT_OUT_OF_MEMORY       =  0x05040005; // Size data exceed SDO_MAX_LENGTH_TRANSFER
+	static final int SDOABT_GENERAL_ERROR       =  0x08000000; // Error size of SDO message
+	static final int SDOABT_LOCAL_CTRL_ERROR    =  0x08000021;
+
+	HashMap<Integer, SdoSession> sessions = null;
+
+
+	Sdo( Driver driver, boolean DEBUG, ObjectDictionary od1 ) throws Exception
+	{
+		super(driver, DEBUG, "SDO", od1);
+		addCobId(0x1200,1);
+		addCobId(0x1200,2);
+		debugPrint("new Sdo");
+		sessions = new HashMap<Integer, SdoSession>();
+	}
+
+
+	void sendAbort(int index, int subIndex, int abortCode) throws Exception
+	{
+		byte can_data[] = new byte[8];
+		debugPrint("Sending SDO abort "+ abortCode);
+		can_data[0] = (byte)(0x80);
+		// Index
+		can_data[1] = (byte)(index & 0xFF);     // LSB
+		can_data[2] = (byte)((index >> 8) & 0xFF); // MSB
+		// Subindex
+		can_data[3] = (byte)(subIndex);
+		// Data
+		can_data[4] = (byte)(abortCode & 0xFF);
+		can_data[5] = (byte)((abortCode >> 8) & 0xFF);
+		can_data[6] = (byte)((abortCode >> 16) & 0xFF);
+		can_data[7] = (byte)((abortCode >> 24) & 0xFF);
+		int cobid = getSubEntry(0x1200,2).getInt();
+		send( cobid, can_data);
+	}
+
+
+	void send(int cobid, byte data[]) throws java.io.IOException
+	{
+		CanMessage msg = new CanMessage(cobid, 0, data);
+		sendMessage(msg);
+	}
+
+
+	boolean processMessage(CanMessage msg)
+	{
+		if(super.processMessage(msg) == false)
+			return(false);
+
+		// Test if the size of the SDO is ok
+		if(msg.length != 8)
+		{
+			try
+			{
+				debugPrint("Error size SDO is "+msg.length);
+				sendAbort(0, 0, SDOABT_GENERAL_ERROR );
+			}
+			catch(Exception e)
+			{
+				System.out.println("Sdo error when sending abort: "+e);
+			}
+			return(false);
+		}
+
+		// Look for an SDO transfer already initiated.
+		try
+		{
+			SdoSession session = sessions.get(msg.id);
+			if(session == null)
+			{ // session not currently in progress, create new session
+				int index = extractIndex(msg);
+				int subIndex = extractSubIndex(msg);
+				SubEntry se1 = getSubEntry(index,subIndex);
+				int txCobId = getSubEntry(0x1200,2).getInt();
+				session = new SdoSession(this, txCobId, se1);
+				sessions.put(msg.id, session);
+			}
+			if(session.processMessage(msg) == false)
+			{ // process the sdo message in the session
+				sessions.remove(msg.id);
+			}
+		}
+		catch(Exception e)
+		{
+			System.out.println("Sdo.processMessage: " +e);
+			return(false);
+		}
+		notifyListeners(msg);
+		return(true);
+	}
+
+
+	public void run()
+	{
+		debugPrint("Sdo expired timer");
+	}
+}
+

@@ -1,0 +1,158 @@
+package com.gcdc.canopen;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Iterator;
+import java.util.Set;
+
+
+public class DefaultOD
+{
+	public static ObjectDictionary create( int nodeId )
+	{
+//{ RO, uint8, sizeof (UNS8), (void*)&ObjDict_highestSubIndex_obj1800 },
+
+//{ RW, uint32, sizeof (UNS32), (void*)&ObjDict_obj1800_COB_ID_used_by_PDO },
+//{ RW, uint8, sizeof (UNS8), (void*)&ObjDict_obj1800_Transmission_Type },
+//{ RW, uint16, sizeof (UNS16), (void*)&ObjDict_obj1800_Inhibit_Time },
+//{ RW, uint8, sizeof (UNS8), (void*)&ObjDict_obj1800_Compatibility_Entry },
+//{ RW, uint16, sizeof (UNS16), (void*)&ObjDict_obj1800_Event_Timer }
+		ObjectDictionary objDict = new ObjectDictionary();
+
+		OdEntry od;
+		SubEntry v1;
+
+		od = new OdEntry(0x1000, "Device Type");
+		objDict.insert(od);
+		v1 = new SubEntry(SubEntry.AccessType.RO, "", 0x20192);
+		od.appendSub(v1);
+
+		od = new OdEntry(0x1001, "Error Register");
+		objDict.insert(od);
+		v1 = new SubEntry(SubEntry.AccessType.RO, "", (byte)0x0);
+		od.appendSub(v1);
+
+		od = new OdEntry(0x1017, "Heartbeat Time");
+		objDict.insert(od);
+		v1 = new SubEntry(SubEntry.AccessType.RW, "", (short)5000);
+		od.appendSub(v1);
+
+		od = new OdEntry(0x1018, "Identity Object");
+		objDict.insert(od);
+		v1 = new SubEntry(SubEntry.AccessType.CONST, "number of Entries", (byte)0x4);
+		od.appendSub(v1);
+		v1 = new SubEntry(SubEntry.AccessType.RO, "Vendor-ID", 0x0000029c);
+		od.appendSub(v1);
+		v1 = new SubEntry(SubEntry.AccessType.RO, "Product code", 0x19);
+		od.appendSub(v1);
+		v1 = new SubEntry(SubEntry.AccessType.RO, "Revision number", 0x116);
+		od.appendSub(v1);
+		v1 = new SubEntry(SubEntry.AccessType.RO, "Serial number", 0x1);
+		od.appendSub(v1);
+
+		od = new OdEntry(0x1200, "SDO server parameters");
+		objDict.insert(od);
+		v1 = new SubEntry(SubEntry.AccessType.CONST, "number of Entries", (byte)0x2);
+		od.appendSub(v1);
+		v1 = new SubEntry(SubEntry.AccessType.RW, "COB-ID client to server", 0xff);
+		od.appendSub(v1);
+		v1 = new SubEntry(SubEntry.AccessType.RW, "COB-ID server to client", 0xff);
+		od.appendSub(v1);
+
+		// RPDO COB_ID (1-4)
+//System.out.println("WARNING: hardcoding default rpdo node id to 0x41");
+		{
+						//index,  string desc,	cobId, 		trans type, inhibit time
+			int cobid = 0x100 | 0x80 | 0x41;
+			OdEntry commParamEntry = OdEntry.pdoFactory(0x1400, "RPDO 1", cobid, 0xff, 0);
+			objDict.insert(commParamEntry);
+			OdEntry mappingEntry = OdEntry.pdoMappingFactory(0x1600, "RPDO 1 mapping parameter", 0x60400008);  // index 0x6040 subindex: 00 len 0x08
+			objDict.insert(mappingEntry);
+		}
+		{
+			//index,  string desc,	cobId, 		trans type, inhibit time
+			int cobid = 0x200 | 0x80 | 0x41;
+			OdEntry commParamEntry = OdEntry.pdoFactory(0x1401, "RPDO 2", cobid, 0xff, 0);
+			objDict.insert(commParamEntry);
+			OdEntry mappingEntry = OdEntry.pdoMappingFactory(0x1601, "RPDO 2 mapping parameter", 0x60410010, 0x60420010, 0x60470010);  // solenoid volage, current and node cpu teemperature degc*10
+			objDict.insert(mappingEntry);
+		}
+		{
+			//index,  string desc,	cobId, 		trans type, inhibit time
+			int cobid = 0x100 | 0x80 | 0x33;
+			OdEntry commParamEntry = OdEntry.pdoFactory(0x1402, "RPDO 3", cobid, 0xff, 0);
+			objDict.insert(commParamEntry);
+			OdEntry mappingEntry = OdEntry.pdoMappingFactory(0x1602, "RPDO 3 mapping parameter", 0x60430008);
+			objDict.insert(mappingEntry);
+		}
+		{
+			//index,  string desc,	cobId, 		trans type, inhibit time
+			int cobid = 0x200 | 0x80 | 0x33;
+			OdEntry commParamEntry = OdEntry.pdoFactory(0x1403, "RPDO 4", cobid, 0xff, 0);
+			objDict.insert(commParamEntry);
+			OdEntry mappingEntry = OdEntry.pdoMappingFactory(0x1603, "RPDO 4 mapping parameter", 0x60440010, 0x60450010, 0x60480010);
+			objDict.insert(mappingEntry);
+		}
+
+		// TPDO COB_ID (1-4)
+		for(int i=0; i<4; i++)
+		{
+			OdEntry commParamEntry  = OdEntry.pdoFactory(0x1800+i, "TPDO "+(i+1), ((i+2)*0x100)|nodeId, 0xff, 0);
+			objDict.insert(commParamEntry);
+			OdEntry mappingEntry = OdEntry.pdoMappingFactory(0x1A00+i, "TPDO "+(i+1)+ "mapping parameter", 0x60400010+0x010000*i);
+			objDict.insert(mappingEntry);
+		}
+
+		// data object for pdo
+		od = new OdEntry(0x6040, "PDO data");
+		objDict.insert(od);
+		v1 = new SubEntry(SubEntry.AccessType.RW, "pdo0", (short)(7));
+		od.appendSub(v1);
+
+		// data object for pdo
+		od = new OdEntry(0x6041, "PDO data");
+		objDict.insert(od);
+		v1 = new SubEntry(SubEntry.AccessType.RW, "pdo1", (int)(0x01234567));
+		od.appendSub(v1);
+
+		// data object for pdo
+		od = new OdEntry(0x6042, "PDO data");
+		objDict.insert(od);
+		v1 = new SubEntry(SubEntry.AccessType.RW, "pdo2", (int)(0x89ABCDEF));
+		od.appendSub(v1);
+
+		// data object for pdo
+		od = new OdEntry(0x6043, "PDO data");
+		objDict.insert(od);
+		v1 = new SubEntry(SubEntry.AccessType.RW, "pdo0", (short)(7));
+		od.appendSub(v1);
+
+		// data object for pdo
+		od = new OdEntry(0x6044, "PDO data");
+		objDict.insert(od);
+		v1 = new SubEntry(SubEntry.AccessType.RW, "pdo1", (int)(0x01234567));
+		od.appendSub(v1);
+
+		// data object for pdo
+		od = new OdEntry(0x6045, "PDO data");
+		objDict.insert(od);
+		v1 = new SubEntry(SubEntry.AccessType.RW, "pdo2", (int)(0x89ABCDEF));
+		od.appendSub(v1);
+
+		// data object for pdo
+		od = new OdEntry(0x6047, "PDO data");
+		objDict.insert(od);
+		v1 = new SubEntry(SubEntry.AccessType.RW, "cpu temperature", (int)(0x0));
+		od.appendSub(v1);
+
+	// data object for pdo
+		od = new OdEntry(0x6048, "PDO data");
+		objDict.insert(od);
+		v1 = new SubEntry(SubEntry.AccessType.RW, "cpu temperature", (int)(0x0));
+		od.appendSub(v1);
+
+
+		return(objDict);
+	}
+}
+
