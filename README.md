@@ -1,6 +1,6 @@
 # CanOpenJavaLibrary
 An interface between canopen and java
-##Creating a CanOpen instance
+## Creating a CanOpen instance
 ```java
     private static void createNewInstance(String ipAddress, Integer portNum){
         System.out.println(ipAddress+":"+Integer.toString(portNum));
@@ -15,7 +15,7 @@ An interface between canopen and java
     }
 ```
 
-##Example Subentry listener
+## Example Subentry listener
 ```java
 public class SubEntryListener implements CanOpenListener{
 	public SubEntryListener(CanOpen coInstance, int index, int subindex){
